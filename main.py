@@ -3,12 +3,12 @@ import requests
 import sys
 import time
 from time import sleep
-from solana.publickey import PublicKey
+from solana.publickey import PubKey
 from solana.rpc.websocket_api import connect
 from solana.rpc.commitment import Finalized
 from solana.rpc.api import Client
 import subprocess
-from utils.discord_notifier import send_message
+from utils.discord_notifier import send_message, composeEmbed
 from utils.security import checkPoolSize, checkLiquidityLockPercentage, checkPresentRisks, checkMintAuthority, checkFreezeAuthority, checkTopHolders
 
 checkPoolSizeFlag = False
@@ -22,24 +22,23 @@ def getRugAPIJsonData(token_address):
         try:
             print(" [*] Gettings token metadata")
             r = requests.get(f'https://api.rugcheck.xyz/v1/tokens/{token_address}/report')
-            if(r.status_code == 200):
+            if(r.text is not None):
                 print(" [*] Metadata obtained")
-                return r.json()
-            else:
-                print(" [!] Metadata fetch failed, retrying...")
-                time.sleep(5)
+                print("")
+            return r.json()
         except:
             print(" [*] Failed to parse json, sleeping for 5 seconds and trying again")
             sleep(5)
 
 def get_pool_infos(token_address, pool_number):
     print(" [*] ENGAGING WITH SECURITY SIZE")
+    print(" [*] CHECKING POOL SIZE")
     global checkPoolSizeFlag
     checkPoolSizeFlag = checkPoolSize(pool_number, minimum_pool_size, maximum_pool_size)
-    global rugPullAPIJsonData
-    rugPullAPIJsonData = getRugAPIJsonData(token_address)
-    print(" [*] CHECKING LOCKED LIQUIDITY PERCENTAGE")
-    if(checkPoolSizeFlag):
+    if (checkPoolSizeFlag == True):
+        global rugPullAPIJsonData   
+        rugPullAPIJsonData = getRugAPIJsonData(token_address)
+        print(" [*] CHECKING LOCKED LIQUIDITY PERCENTAGE")
         lockedPercentage = checkLiquidityLockPercentage(rugPullAPIJsonData)
         if(lockedPercentage > int(minimum_locked_percentage)):
             print(" [*] Locked liquidity check passed!")
